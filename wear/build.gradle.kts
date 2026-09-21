@@ -17,12 +17,12 @@ base {
 
 android {
     namespace = "com.charan.batterytracker"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.charan.batterytracker"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 1002
         versionName = "0.0.2"
         vectorDrawables {
