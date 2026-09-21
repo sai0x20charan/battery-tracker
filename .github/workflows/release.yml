@@ -72,14 +72,14 @@ jobs:
             BUILD_MOBILE=true
             BUILD_WEAR=false
             TARGET="mobile"
-            VERSION_NAME="${VERSION_NAME/-mobile/}"
+            VERSION_NAME="${CLEAN_VERSION/-mobile/}"
             RELEASE_TITLE="Battery Tracker Mobile v${VERSION_NAME}"
           else
             # Default for -v or v* tags (all modules)
             BUILD_MOBILE=true
             BUILD_WEAR=true
             TARGET="all"
-            VERSION_NAME="${VERSION_NAME/-v/}"
+            VERSION_NAME="${CLEAN_VERSION/-v/}"
             RELEASE_TITLE="Battery Tracker v${VERSION_NAME}"
           fi
 
