@@ -40,6 +40,7 @@ jobs:
 
           # google-services
           echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > mobile/google-services.json
+          cp mobile/google-services.json mobile/src/release/google-services.json 2>/dev/null || true
 
           # keystore.properties
           echo "storeFile=mobile/src/release/batterytracker_release.jks" > keystore.properties
@@ -188,7 +189,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ env.RELEASE_TITLE }}
-          draft: true
           prerelease: false
           body_path: release_notes.md
           files: |
