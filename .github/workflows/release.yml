@@ -1,4 +1,4 @@
-name: Android Release
+name: Release
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
           echo "keyAlias=$KEY_ALIAS" >> keystore.properties
           echo "keyPassword=$KEY_PASSWORD" >> keystore.properties
 
-      - name: Determine Targets and Version Info
+      - name: Determine Release Type
         run: |
           TAG="${GITHUB_REF_NAME}"
           CLEAN_VERSION="${TAG#v}"
@@ -56,11 +56,9 @@ jobs:
           # Check for beta tag
           if [[ "$CLEAN_VERSION" == *-beta* ]]; then
             IS_BETA=true
-            APK_SUFFIX="-beta"
             CLEAN_VERSION="${CLEAN_VERSION/-beta/}"
           else
             IS_BETA=false
-            APK_SUFFIX=""
           fi
 
           # Determine target modules to build
@@ -68,150 +66,148 @@ jobs:
             BUILD_MOBILE=false
             BUILD_WEAR=true
             TARGET="wear"
-            CLEAN_VERSION="${CLEAN_VERSION/-wear/}"
-            RELEASE_TITLE="Battery Tracker Wear OS v${CLEAN_VERSION}"
+            VERSION_NAME="${CLEAN_VERSION/-wear/}"
+            RELEASE_TITLE="Battery Tracker Wear OS v${VERSION_NAME}"
           elif [[ "$TAG" == *-mobile* ]]; then
             BUILD_MOBILE=true
             BUILD_WEAR=false
             TARGET="mobile"
-            CLEAN_VERSION="${CLEAN_VERSION/-mobile/}"
-            RELEASE_TITLE="Battery Tracker Mobile v${CLEAN_VERSION}"
+            VERSION_NAME="${CLEAN_VERSION/-mobile/}"
+            RELEASE_TITLE="Battery Tracker Mobile v${VERSION_NAME}"
           else
             # Default for -v or v* tags (all modules)
             BUILD_MOBILE=true
             BUILD_WEAR=true
             TARGET="all"
-            CLEAN_VERSION="${CLEAN_VERSION/-v/}"
-            RELEASE_TITLE="Battery Tracker v${CLEAN_VERSION}"
+            VERSION_NAME="${CLEAN_VERSION/-v/}"
+            RELEASE_TITLE="Battery Tracker v${VERSION_NAME}"
           fi
 
           if [ "$IS_BETA" = "true" ]; then
             RELEASE_TITLE="${RELEASE_TITLE} (Beta)"
           fi
 
-          # Construct Gradle build tasks dynamically
-          GRADLE_TASKS=""
-          if [ "$BUILD_MOBILE" = "true" ]; then
-            GRADLE_TASKS="$GRADLE_TASKS :mobile:assembleRelease :mobile:bundleRelease"
-          fi
-          if [ "$BUILD_WEAR" = "true" ]; then
-            GRADLE_TASKS="$GRADLE_TASKS :wear:assembleRelease :wear:bundleRelease"
-          fi
-
           echo "IS_BETA=$IS_BETA" >> $GITHUB_ENV
-          echo "APK_SUFFIX=$APK_SUFFIX" >> $GITHUB_ENV
           echo "BUILD_MOBILE=$BUILD_MOBILE" >> $GITHUB_ENV
           echo "BUILD_WEAR=$BUILD_WEAR" >> $GITHUB_ENV
           echo "TARGET=$TARGET" >> $GITHUB_ENV
-          echo "VERSION_NAME=$CLEAN_VERSION" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
-          echo "GRADLE_TASKS=$GRADLE_TASKS" >> $GITHUB_ENV
 
-      - name: Debug Target & Version Info
+      - name: Debug Version Info
         run: |
           echo "Tag: $GITHUB_REF_NAME"
           echo "Target: $TARGET"
           echo "Build Mobile: $BUILD_MOBILE"
           echo "Build Wear: $BUILD_WEAR"
-          echo "Version Name: $VERSION_NAME"
+          echo "Version: $VERSION_NAME"
           echo "Is Beta: $IS_BETA"
-          echo "APK Suffix: $APK_SUFFIX"
-          echo "Gradle Tasks: $GRADLE_TASKS"
           echo "Release Title: $RELEASE_TITLE"
 
       - name: Create local.properties
         env:
           API_KEY: ${{ secrets.API_KEY }}
         run: |
-          touch local.properties
-          echo "API_KEY=$API_KEY" >> local.properties
+          echo "API_KEY=$API_KEY" > local.properties
 
-      - name: Build Release
-        run: ./gradlew $GRADLE_TASKS
+      - name: Release Build for Mobile
+        if: ${{ env.BUILD_MOBILE == 'true' }}
+        run: ./gradlew :mobile:assembleRelease :mobile:bundleRelease
 
-      - name: Collect and Rename Release Artifacts
-        run: |
-          echo "Collecting release artifacts..."
-          mkdir -p release-artifacts
+      - name: Release Build for Wear
+        if: ${{ env.BUILD_WEAR == 'true' }}
+        run: ./gradlew :wear:assembleRelease :wear:bundleRelease
 
-          if [ "$BUILD_MOBILE" = "true" ]; then
-            for file in mobile/build/outputs/apk/release/*.apk; do
-              if [ -f "$file" ]; then
-                cp "$file" "release-artifacts/Battery-Tracker-Mobile-${VERSION_NAME}${APK_SUFFIX}.apk"
-              fi
-            done
-            for file in mobile/build/outputs/bundle/release/*.aab; do
-              if [ -f "$file" ]; then
-                cp "$file" "release-artifacts/Battery-Tracker-Mobile-${VERSION_NAME}.aab"
-              fi
-            done
-          fi
-
-          if [ "$BUILD_WEAR" = "true" ]; then
-            for file in wear/build/outputs/apk/release/*.apk; do
-              if [ -f "$file" ]; then
-                cp "$file" "release-artifacts/Battery-Tracker-Wear-${VERSION_NAME}${APK_SUFFIX}.apk"
-              fi
-            done
-            for file in wear/build/outputs/bundle/release/*.aab; do
-              if [ -f "$file" ]; then
-                cp "$file" "release-artifacts/Battery-Tracker-Wear-${VERSION_NAME}.aab"
-              fi
-            done
-          fi
-
-          ls -lah release-artifacts/
-
-      - name: Upload Build Artifacts
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-builds-${{ env.TARGET }}
-          path: release-artifacts/*
+          name: signed-aab
+          path: |
+            mobile/build/outputs/bundle/release/*.aab
+            wear/build/outputs/bundle/release/*.aab
+          if-no-files-found: ignore
 
       - name: Prepare Release Notes
         run: |
           RELEASE_DATE=$(date +'%Y-%m-%d')
-          CHANGELOG_PATH="mobile/src/main/assets/CHANGELOG.md"
+          MOBILE_CHANGELOG="mobile/src/main/assets/CHANGELOG.md"
+          WEAR_CHANGELOG="wear/src/main/assets/CHANGELOG.md"
 
           echo "# $RELEASE_TITLE" > release_notes.md
           echo "" >> release_notes.md
           echo "Released: $RELEASE_DATE" >> release_notes.md
           echo "" >> release_notes.md
 
-          if [ -f "$CHANGELOG_PATH" ]; then
-            cat "$CHANGELOG_PATH" >> release_notes.md
+          # Build GitHub release notes based on target
+          if [ "$TARGET" = "wear" ]; then
+            if [ -f "$WEAR_CHANGELOG" ]; then
+              cat "$WEAR_CHANGELOG" >> release_notes.md
+            fi
+          elif [ "$TARGET" = "mobile" ]; then
+            if [ -f "$MOBILE_CHANGELOG" ]; then
+              cat "$MOBILE_CHANGELOG" >> release_notes.md
+            fi
           else
-            echo "No changelog found." >> release_notes.md
+            if [ -f "$MOBILE_CHANGELOG" ]; then
+              echo "## Mobile" >> release_notes.md
+              echo "" >> release_notes.md
+              sed 's/^## /### /' "$MOBILE_CHANGELOG" >> release_notes.md
+              echo "" >> release_notes.md
+            fi
+            if [ -f "$WEAR_CHANGELOG" ]; then
+              echo "## Wear OS" >> release_notes.md
+              echo "" >> release_notes.md
+              sed 's/^## /### /' "$WEAR_CHANGELOG" >> release_notes.md
+            fi
           fi
 
-          mkdir -p whatsnew
-          if [ -f "$CHANGELOG_PATH" ]; then
-            sed 's/^## //' "$CHANGELOG_PATH" | head -c 500 > whatsnew/whatsnew-en-US
+          # Prepare Google Play whatsnew directories
+          mkdir -p whatsnew-mobile whatsnew-wear
+
+          if [ -f "$MOBILE_CHANGELOG" ]; then
+            sed 's/^## //' "$MOBILE_CHANGELOG" | head -c 500 > whatsnew-mobile/whatsnew-en-US
           else
-            echo "Released on $RELEASE_DATE" > whatsnew/whatsnew-en-US
+            echo "Released on $RELEASE_DATE" > whatsnew-mobile/whatsnew-en-US
           fi
 
-      - name: Create GitHub Beta Release
-        if: ${{ env.IS_BETA == 'true' }}
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+          if [ -f "$WEAR_CHANGELOG" ]; then
+            sed 's/^## //' "$WEAR_CHANGELOG" | head -c 500 > whatsnew-wear/whatsnew-en-US
+          else
+            echo "Released on $RELEASE_DATE" > whatsnew-wear/whatsnew-en-US
+          fi
+
+      - name: Upload To Play Store (Mobile)
+        if: ${{ env.BUILD_MOBILE == 'true' }}
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ env.RELEASE_TITLE }}
-          prerelease: true
-          body_path: release_notes.md
-          files: release-artifacts/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          packageName: com.charan.batterytracker
+          releaseFile: mobile/build/outputs/bundle/release/*.aab
+          track: internal
+          inAppUpdatePriority: 5
+          whatsNewDirectory: whatsnew-mobile
+
+      - name: Upload To Play Store (Wear)
+        if: ${{ env.BUILD_WEAR == 'true' }}
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          packageName: com.charan.batterytracker
+          releaseFile: wear/build/outputs/bundle/release/*.aab
+          track: wear:internal
+          inAppUpdatePriority: 5
+          whatsNewDirectory: whatsnew-wear
 
       - name: Create GitHub Release
-        if: ${{ env.IS_BETA == 'false' }}
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ env.RELEASE_TITLE }}
-          prerelease: false
+          prerelease: ${{ env.IS_BETA == 'true' }}
           body_path: release_notes.md
-          files: release-artifacts/*
+          files: |
+            mobile/build/outputs/apk/release/*.apk
+            wear/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
