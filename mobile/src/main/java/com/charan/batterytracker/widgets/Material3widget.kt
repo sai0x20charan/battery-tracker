@@ -115,7 +115,7 @@ fun Material3WidgetContent(
             ),
         )
         WidgetContent(
-            phoneBatteryState = batteryState?.deviceBattery ?: BatteryInfo(),
+            phoneBatteryState = batteryState.deviceBattery,
             bluetoothBatteryState = bluetoothDeviceBatteryInfo ?: BluetoothDeviceBatteryInfo(),
             modifier = GlanceModifier.background(GlanceTheme.colors.surface),
             isLargeWidget = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
