@@ -23,7 +23,6 @@ hiltNavigationCompose = "1.4.0"
 materialIconsExtended = "1.7.8"
 navigationCompose = "2.10.1"
 playServicesWearable = "20.0.1"
-material = "1.14.0"
 composeBom = "2026.09.00"
 material3Android = "1.5.0-alpha28"
 activityCompose = "1.13.0"
@@ -65,7 +64,6 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanaryAndroid" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
