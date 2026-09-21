@@ -1,18 +1,16 @@
 package com.charan.batterytracker.data.repository.impl
 
 import android.Manifest
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import android.os.Build
 import android.os.PowerManager
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.Wearable
@@ -44,14 +42,15 @@ class BatteryInfoRepoImp @Inject constructor(
     val notificationHelper: NotificationHelper
 ): BatteryInfoRepo {
     private var batteryReceiver: BroadcastReceiver? = null
-    private val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+    private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val bluetoothAdapter = bluetoothManager.adapter
 
     private val batteryInfoFlow = MutableStateFlow<BatteryInfo?>(null)
     private val bluetoothBatteryInfo = MutableStateFlow<BluetoothDeviceBatteryInfo>(BluetoothDeviceBatteryInfo())
 
     override fun registerBatteryReceiver() {
         batteryReceiver = object : BroadcastReceiver() {
-            @RequiresApi(Build.VERSION_CODES.R)
             override fun onReceive(context: Context, intent: Intent?) {
                 getPhoneBatteryData()
             }
@@ -118,13 +117,13 @@ class BatteryInfoRepoImp @Inject constructor(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun registerWearOsBatteryReceiver() {
-        var wearOSBatteryData = BatteryInfo()
+        var wearOSBatteryData: BatteryInfo
         var isWearOsConnected = false
         var wearOsName : String? = null
         Wearable.getMessageClient(context).addListener { messageEvent ->
             CoroutineScope(Dispatchers.IO).launch {
                 wearOSBatteryData = String(messageEvent.data).convertToBatteryModel()
-                if(wearOSBatteryData.batteryLevel.isNullOrEmpty().not()){
+                if(wearOSBatteryData.batteryLevel.isEmpty().not()){
                     isWearOsConnected = true
                     val pariedDevices : List<BluetoothDevice> = bluetoothAdapter.bondedDevices.filter { it.bluetoothClass.majorDeviceClass == BluetoothClass.Device.Major.WEARABLE }
                     pariedDevices.forEach {
@@ -165,16 +164,16 @@ class BatteryInfoRepoImp @Inject constructor(
     override fun registerBluetoothBatteryReceiver() {
         var headPhoneName = ""
         var headPhoneBatteryLevel = 0
-        var wearOsName = ""
+        val wearOsName = ""
         var hasHeadPhones : Boolean = false
         val pariedDevices : List<BluetoothDevice> = bluetoothAdapter.bondedDevices.filter { it.bluetoothClass.majorDeviceClass == BluetoothClass.Device.Major.AUDIO_VIDEO }
         pariedDevices.forEach {
-            val headPhoneBattery = it?.let { bluetoothDevice ->
-                (bluetoothDevice?.javaClass?.getMethod("getBatteryLevel"))
-                    ?.invoke(it) as Int
-            } ?: -1
+            val headPhoneBattery = it.let { bluetoothDevice ->
+                (bluetoothDevice.javaClass.getMethod("getBatteryLevel"))
+                    .invoke(it) as Int
+            }
             if (headPhoneBattery != -1){
-                headPhoneName = it?.alias.toString()
+                headPhoneName = it.alias.toString()
                 headPhoneBatteryLevel = headPhoneBattery
                 hasHeadPhones = true
             }
@@ -198,12 +197,12 @@ class BatteryInfoRepoImp @Inject constructor(
         var hasHeadPhones : Boolean = false
         val pariedDevices : List<BluetoothDevice> = bluetoothAdapter.bondedDevices.filter { it.bluetoothClass.majorDeviceClass == BluetoothClass.Device.Major.AUDIO_VIDEO }
         pariedDevices.forEach {
-            val headPhoneBattery = it?.let { bluetoothDevice ->
-                (bluetoothDevice?.javaClass?.getMethod("getBatteryLevel"))
-                    ?.invoke(it) as Int
-            } ?: -1
+            val headPhoneBattery = it.let { bluetoothDevice ->
+                (bluetoothDevice.javaClass.getMethod("getBatteryLevel"))
+                    .invoke(it) as Int
+            }
             if (headPhoneBattery != -1){
-                headPhoneName = it?.alias.toString()
+                headPhoneName = it.alias.toString()
                 headPhoneBatteryLevel = headPhoneBattery
                 hasHeadPhones = true
             }
@@ -262,7 +261,7 @@ class BatteryInfoRepoImp @Inject constructor(
     private fun getNodes(context: Context): Collection<String> {
         return try {
             Tasks.await(Wearable.getNodeClient(context).connectedNodes).map { it.id }
-        } catch (e: Exception){
+        } catch (_: Exception){
             emptyList()
         }
     }
