@@ -188,6 +188,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ env.RELEASE_TITLE }}
+          draft: true
           prerelease: false
           body_path: release_notes.md
           files: |
