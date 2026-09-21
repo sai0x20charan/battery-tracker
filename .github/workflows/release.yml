@@ -51,15 +51,22 @@ jobs:
       - name: Determine Release Type
         run: |
           TAG="${GITHUB_REF_NAME}"
-          VERSION_NAME="${TAG#v}"
-          VERSION_CODE="${GITHUB_RUN_NUMBER}"
+          CLEAN_VERSION="${TAG#v}"
+
+          # Check for beta tag
+          if [[ "$CLEAN_VERSION" == *-beta* ]]; then
+            IS_BETA=true
+            CLEAN_VERSION="${CLEAN_VERSION/-beta/}"
+          else
+            IS_BETA=false
+          fi
 
           # Determine target modules to build
           if [[ "$TAG" == *-wear* ]]; then
             BUILD_MOBILE=false
             BUILD_WEAR=true
             TARGET="wear"
-            VERSION_NAME="${VERSION_NAME/-wear/}"
+            VERSION_NAME="${CLEAN_VERSION/-wear/}"
             RELEASE_TITLE="Battery Tracker Wear OS v${VERSION_NAME}"
           elif [[ "$TAG" == *-mobile* ]]; then
             BUILD_MOBILE=true
@@ -76,11 +83,15 @@ jobs:
             RELEASE_TITLE="Battery Tracker v${VERSION_NAME}"
           fi
 
+          if [ "$IS_BETA" = "true" ]; then
+            RELEASE_TITLE="${RELEASE_TITLE} (Beta)"
+          fi
+
+          echo "IS_BETA=$IS_BETA" >> $GITHUB_ENV
           echo "BUILD_MOBILE=$BUILD_MOBILE" >> $GITHUB_ENV
           echo "BUILD_WEAR=$BUILD_WEAR" >> $GITHUB_ENV
           echo "TARGET=$TARGET" >> $GITHUB_ENV
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
-          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
 
       - name: Debug Version Info
@@ -89,7 +100,8 @@ jobs:
           echo "Target: $TARGET"
           echo "Build Mobile: $BUILD_MOBILE"
           echo "Build Wear: $BUILD_WEAR"
-          echo "Version: $VERSION_NAME ($VERSION_CODE)"
+          echo "Version: $VERSION_NAME"
+          echo "Is Beta: $IS_BETA"
           echo "Release Title: $RELEASE_TITLE"
 
       - name: Create local.properties
@@ -137,13 +149,15 @@ jobs:
             fi
           else
             if [ -f "$MOBILE_CHANGELOG" ]; then
-              echo "### Mobile" >> release_notes.md
-              cat "$MOBILE_CHANGELOG" >> release_notes.md
+              echo "## Mobile" >> release_notes.md
+              echo "" >> release_notes.md
+              sed 's/^## /### /' "$MOBILE_CHANGELOG" >> release_notes.md
               echo "" >> release_notes.md
             fi
             if [ -f "$WEAR_CHANGELOG" ]; then
-              echo "### Wear OS" >> release_notes.md
-              cat "$WEAR_CHANGELOG" >> release_notes.md
+              echo "## Wear OS" >> release_notes.md
+              echo "" >> release_notes.md
+              sed 's/^## /### /' "$WEAR_CHANGELOG" >> release_notes.md
             fi
           fi
 
@@ -185,11 +199,11 @@ jobs:
           whatsNewDirectory: whatsnew-wear
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ env.RELEASE_TITLE }}
-          prerelease: false
+          prerelease: ${{ env.IS_BETA == 'true' }}
           body_path: release_notes.md
           files: |
             mobile/build/outputs/apk/release/*.apk

@@ -25,8 +25,8 @@ git describe --tags --abbrev=0
 ```
 
 Or find target-specific tags if applicable:
-* For Mobile: `git tag -l "*mobile*" | tail -n 1` (or latest general tag)
-* For Wear OS: `git tag -l "*wear*" | tail -n 1` (or latest general tag)
+* For Mobile: `git tag -l "*mobile*" --sort=v:refname | tail -n 1` (or latest general tag: `git tag -l "v*" --sort=v:refname | tail -n 1`)
+* For Wear OS: `git tag -l "*wear*" --sort=v:refname | tail -n 1` (or latest general tag: `git tag -l "v*" --sort=v:refname | tail -n 1`)
 
 Use the tag as the starting point for analyzing commits.
 
