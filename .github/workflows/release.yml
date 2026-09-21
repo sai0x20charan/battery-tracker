@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*-wear*'
+      - '*-mobile*'
+      - 'v*'
+      - '*-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Restore keystore and google services
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          mkdir -p mobile/src/release
+
+          # Keystore
+          echo "$KEYSTORE_BASE64" | base64 --decode > mobile/src/release/batterytracker_release.jks
+
+          # google-services
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > mobile/google-services.json
+
+          # keystore.properties
+          echo "storeFile=mobile/src/release/batterytracker_release.jks" > keystore.properties
+          echo "storePassword=$KEYSTORE_PASSWORD" >> keystore.properties
+          echo "keyAlias=$KEY_ALIAS" >> keystore.properties
+          echo "keyPassword=$KEY_PASSWORD" >> keystore.properties
+
+      - name: Determine Release Type
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION_NAME="${TAG#v}"
+          VERSION_CODE="${GITHUB_RUN_NUMBER}"
+
+          # Determine target modules to build
+          if [[ "$TAG" == *-wear* ]]; then
+            BUILD_MOBILE=false
+            BUILD_WEAR=true
+            TARGET="wear"
+            VERSION_NAME="${VERSION_NAME/-wear/}"
+            RELEASE_TITLE="Battery Tracker Wear OS v${VERSION_NAME}"
+          elif [[ "$TAG" == *-mobile* ]]; then
+            BUILD_MOBILE=true
+            BUILD_WEAR=false
+            TARGET="mobile"
+            VERSION_NAME="${VERSION_NAME/-mobile/}"
+            RELEASE_TITLE="Battery Tracker Mobile v${VERSION_NAME}"
+          else
+            # Default for -v or v* tags (all modules)
+            BUILD_MOBILE=true
+            BUILD_WEAR=true
+            TARGET="all"
+            VERSION_NAME="${VERSION_NAME/-v/}"
+            RELEASE_TITLE="Battery Tracker v${VERSION_NAME}"
+          fi
+
+          echo "BUILD_MOBILE=$BUILD_MOBILE" >> $GITHUB_ENV
+          echo "BUILD_WEAR=$BUILD_WEAR" >> $GITHUB_ENV
+          echo "TARGET=$TARGET" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
+
+      - name: Debug Version Info
+        run: |
+          echo "Tag: $GITHUB_REF_NAME"
+          echo "Target: $TARGET"
+          echo "Build Mobile: $BUILD_MOBILE"
+          echo "Build Wear: $BUILD_WEAR"
+          echo "Version: $VERSION_NAME ($VERSION_CODE)"
+          echo "Release Title: $RELEASE_TITLE"
+
+      - name: Create local.properties
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+        run: |
+          echo "API_KEY=$API_KEY" > local.properties
+
+      - name: Release Build for Mobile
+        if: ${{ env.BUILD_MOBILE == 'true' }}
+        run: ./gradlew :mobile:assembleRelease :mobile:bundleRelease
+
+      - name: Release Build for Wear
+        if: ${{ env.BUILD_WEAR == 'true' }}
+        run: ./gradlew :wear:assembleRelease :wear:bundleRelease
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-aab
+          path: |
+            mobile/build/outputs/bundle/release/*.aab
+            wear/build/outputs/bundle/release/*.aab
+          if-no-files-found: ignore
+
+      - name: Prepare Release Notes
+        run: |
+          RELEASE_DATE=$(date +'%Y-%m-%d')
+          MOBILE_CHANGELOG="mobile/src/main/assets/CHANGELOG.md"
+          WEAR_CHANGELOG="wear/src/main/assets/CHANGELOG.md"
+
+          echo "# $RELEASE_TITLE" > release_notes.md
+          echo "" >> release_notes.md
+          echo "Released: $RELEASE_DATE" >> release_notes.md
+          echo "" >> release_notes.md
+
+          # Build GitHub release notes based on target
+          if [ "$TARGET" = "wear" ]; then
+            if [ -f "$WEAR_CHANGELOG" ]; then
+              cat "$WEAR_CHANGELOG" >> release_notes.md
+            fi
+          elif [ "$TARGET" = "mobile" ]; then
+            if [ -f "$MOBILE_CHANGELOG" ]; then
+              cat "$MOBILE_CHANGELOG" >> release_notes.md
+            fi
+          else
+            if [ -f "$MOBILE_CHANGELOG" ]; then
+              echo "### Mobile" >> release_notes.md
+              cat "$MOBILE_CHANGELOG" >> release_notes.md
+              echo "" >> release_notes.md
+            fi
+            if [ -f "$WEAR_CHANGELOG" ]; then
+              echo "### Wear OS" >> release_notes.md
+              cat "$WEAR_CHANGELOG" >> release_notes.md
+            fi
+          fi
+
+          # Prepare Google Play whatsnew directories
+          mkdir -p whatsnew-mobile whatsnew-wear
+
+          if [ -f "$MOBILE_CHANGELOG" ]; then
+            sed 's/^## //' "$MOBILE_CHANGELOG" | head -c 500 > whatsnew-mobile/whatsnew-en-US
+          else
+            echo "Released on $RELEASE_DATE" > whatsnew-mobile/whatsnew-en-US
+          fi
+
+          if [ -f "$WEAR_CHANGELOG" ]; then
+            sed 's/^## //' "$WEAR_CHANGELOG" | head -c 500 > whatsnew-wear/whatsnew-en-US
+          else
+            echo "Released on $RELEASE_DATE" > whatsnew-wear/whatsnew-en-US
+          fi
+
+      - name: Upload To Play Store (Mobile)
+        if: ${{ env.BUILD_MOBILE == 'true' }}
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          packageName: com.charan.batterytracker
+          releaseFile: mobile/build/outputs/bundle/release/*.aab
+          track: internal
+          inAppUpdatePriority: 5
+          whatsNewDirectory: whatsnew-mobile
+
+      - name: Upload To Play Store (Wear)
+        if: ${{ env.BUILD_WEAR == 'true' }}
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          packageName: com.charan.batterytracker
+          releaseFile: wear/build/outputs/bundle/release/*.aab
+          track: wear:internal
+          inAppUpdatePriority: 5
+          whatsNewDirectory: whatsnew-wear
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.RELEASE_TITLE }}
+          prerelease: false
+          body_path: release_notes.md
+          files: |
+            mobile/build/outputs/apk/release/*.apk
+            wear/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up sensitive files
+        if: always()
+        run: |
+          rm -f keystore.properties
+          rm -f mobile/src/release/batterytracker_release.jks
