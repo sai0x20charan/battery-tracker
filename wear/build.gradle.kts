@@ -53,7 +53,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            optimization {
+                enable = true
+            }
             resValue("string", "app_name", "Battery Tracker")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -95,27 +97,15 @@ kotlin {
 dependencies {
     implementation(libs.play.services.wearable)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.compose.material)
-    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.bundles.compose.wear)
 
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.core.splashscreen)
-    implementation(libs.androidx.tiles)
-    implementation(libs.androidx.tiles.material)
-    implementation(libs.horologist.compose.tools)
-    implementation(libs.horologist.tiles)
+    implementation(libs.bundles.wear.tiles)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
-//    implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.watchface.complications.data.source.ktx)
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
-    implementation(libs.androidx.compose.material3)
+    debugImplementation(libs.bundles.compose.debug)
 }

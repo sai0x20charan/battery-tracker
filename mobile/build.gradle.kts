@@ -6,7 +6,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
-    id("com.google.gms.google-services")
+    alias(libs.plugins.google.services)
     alias(libs.plugins.legacy.kapt)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt.android)
@@ -64,8 +64,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            optimization {
+                enable = true
+            }
             resValue("string", "app_name", appName)
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -112,54 +113,33 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
 
-    implementation(libs.material)
-
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.firebase.database)
-
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.bundles.compose.mobile)
+
     implementation(libs.firebase.crashlytics)
 
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    implementation(libs.androidx.glance)
-    implementation(libs.accompanist.swiperefresh)
-    implementation(libs.androidx.material3.android)
+    implementation(libs.bundles.glance)
 
-    // For AppWidgets support
-    implementation(libs.androidx.glance.appwidget)
-    debugImplementation(libs.leakcanary.android)
+    implementation(libs.bundles.retrofit)
 
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.material.icons.extended)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.retrofit)
-    implementation(libs.converter.gson)
-    implementation(libs.okhttp)
-    implementation(libs.logging.interceptor)
     implementation(libs.play.services.wearable)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+
     implementation(libs.version.tracker.android.library)
-    implementation(libs.hilt.android)
+    implementation(libs.bundles.hilt.mobile)
     kapt(libs.hilt.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.accompanist.permissions)
-    implementation(libs.androidx.hilt.work)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.aboutlibraries.core)
     implementation(libs.aboutlibraries.compose.m3)
 
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.datastore.preferences)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.bundles.test.android)
+
+    debugImplementation(libs.leakcanary.android)
+    debugImplementation(libs.bundles.compose.debug)
 }

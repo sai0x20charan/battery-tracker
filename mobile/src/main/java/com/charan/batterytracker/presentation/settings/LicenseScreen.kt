@@ -11,9 +11,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.NavHostController
+import com.charan.batterytracker.R
+import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,6 +24,7 @@ import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 
 fun LicenseScreen(navHostController: NavHostController){
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val libraries by produceLibraries(R.raw.aboutlibraries)
 
     Scaffold(
         topBar = {
@@ -37,7 +41,8 @@ fun LicenseScreen(navHostController: NavHostController){
         }
     ) {
         LibrariesContainer(
-            modifier = Modifier.padding(it).nestedScroll(scroll.nestedScrollConnection)
+            modifier = Modifier.padding(it).nestedScroll(scroll.nestedScrollConnection),
+            libraries = libraries
         )
 
 
