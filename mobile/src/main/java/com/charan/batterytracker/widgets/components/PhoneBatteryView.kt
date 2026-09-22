@@ -72,14 +72,14 @@ fun DeviceBatteryView(
                     fontWeight = FontWeight.Medium,
                     fontSize = MaterialTheme.typography.labelLargeEmphasized.fontSize
                 ),
-//                modifier = GlanceModifier.defaultWeight()
+                modifier = GlanceModifier.defaultWeight()
             )
         }
         Spacer(modifier = GlanceModifier.defaultWeight())
-//
-//        if(!isLargeWidget){
-//            Spacer(modifier = GlanceModifier.defaultWeight())
-//        }
+
+        if(!isLargeWidget){
+            Spacer(modifier = GlanceModifier.defaultWeight())
+        }
 
 
         if (isCharging) {

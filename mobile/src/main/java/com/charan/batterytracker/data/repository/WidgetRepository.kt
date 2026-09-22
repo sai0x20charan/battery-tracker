@@ -45,11 +45,7 @@ class WidgetRepository @Inject constructor(
     }
 
     fun startObserving() {
-        if (settingsUtils.isBluetoothPermissionGranted()) {
-            batteryInfoRepo.registerBluetoothBatteryReceiver()
-            batteryInfoRepo.registerWearOsBatteryReceiver()
-        }
-        batteryInfoRepo.registerBatteryReceiver()
+        // Lifecycle and receivers are managed reactively by BatteryInfoRepo data sources
     }
 
     fun batteryData(): BatteryInfo =
@@ -70,7 +66,7 @@ class WidgetRepository @Inject constructor(
     }
 
     fun cleanUp() {
-        batteryInfoRepo.unRegisterBatteryReceiver()
+        // Automatically cleaned up on flow cancellation
     }
 
     suspend fun updateWidget() {

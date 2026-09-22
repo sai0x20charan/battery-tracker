@@ -7,50 +7,52 @@ import androidx.core.app.NotificationCompat
 import com.charan.batterytracker.R
 import javax.inject.Inject
 
-class NotificationHelper @Inject constructor(
-    private val context : Context
+open class NotificationHelper @Inject constructor(
+    private val context: Context?
 ) {
 
     companion object {
-
         const val HEADPHONES_CHANNEL_ID = "battery-tracker-headphones-notifications"
         const val WEAROS_CHANNEL_ID = "battery-tracker-wearos-notifications"
         const val HEADPHONE_CHANNEL_NAME = "Headphone Battery Notification"
         const val WEAROS_CHANNEL_NAME = "WearOs Battery Notification"
-
     }
-    private val notificationManager : NotificationManager
+
+    private val notificationManager: NotificationManager? =
+        context?.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
 
     init {
-        notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        createNotificationChannel()
+        if (context != null) {
+            createNotificationChannel()
+        }
     }
 
-
-    fun showLowBatteryNotificationForHeadPhones(batteryLevel : String, deviceName : String) {
-        val notificationBuilder = NotificationCompat.Builder(context, HEADPHONES_CHANNEL_ID)
+    open fun showLowBatteryNotificationForHeadPhones(batteryLevel: String, deviceName: String) {
+        val ctx = context ?: return
+        val manager = notificationManager ?: return
+        val notificationBuilder = NotificationCompat.Builder(ctx, HEADPHONES_CHANNEL_ID)
             .setSmallIcon(R.drawable.earphones)
             .setContentTitle("Low Battery")
             .setContentText("$deviceName is at $batteryLevel%. Please charge your device.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
-        notificationManager.notify(1, notificationBuilder)
-
+        manager.notify(1, notificationBuilder)
     }
 
-    fun showLowBatteryNotificationForWearos(batteryLevel : String, deviceName : String) {
-        val notificationBuilder = NotificationCompat.Builder(context, WEAROS_CHANNEL_ID)
+    open fun showLowBatteryNotificationForWearos(batteryLevel: String, deviceName: String) {
+        val ctx = context ?: return
+        val manager = notificationManager ?: return
+        val notificationBuilder = NotificationCompat.Builder(ctx, WEAROS_CHANNEL_ID)
             .setSmallIcon(R.drawable.baseline_watch_24)
             .setContentTitle("Low Battery")
             .setContentText("$deviceName is at $batteryLevel%. Please charge your device.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
-        notificationManager.notify(2, notificationBuilder)
-
+        manager.notify(2, notificationBuilder)
     }
 
-
     private fun createNotificationChannel() {
+        val manager = notificationManager ?: return
         val headPhonesChannel = NotificationChannel(
             HEADPHONES_CHANNEL_ID,
             HEADPHONE_CHANNEL_NAME,
@@ -61,7 +63,6 @@ class NotificationHelper @Inject constructor(
             WEAROS_CHANNEL_NAME,
             NotificationManager.IMPORTANCE_HIGH
         )
-        notificationManager.createNotificationChannels(listOf(headPhonesChannel,wearOsChannel))
+        manager.createNotificationChannels(listOf(headPhonesChannel, wearOsChannel))
     }
-
 }
