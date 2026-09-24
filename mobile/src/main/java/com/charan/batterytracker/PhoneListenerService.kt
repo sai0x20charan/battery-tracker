@@ -1,43 +1,50 @@
 package com.charan.batterytracker
 
-import android.content.Context
 import android.util.Log
-import com.charan.batterytracker.data.repository.impl.BatteryInfoRepoImp
-import com.charan.batterytracker.data.repository.impl.DataStoreRepositoryImpl
-import com.charan.batterytracker.utils.NotificationHelper
+import com.charan.batterytracker.data.repository.BatteryInfoRepo
+import com.charan.batterytracker.data.datasource.WearableDataSource
+import com.charan.batterytracker.di.ApplicationScope
 import com.charan.batterytracker.utils.convertToJsonString
-import com.google.android.gms.tasks.Tasks
-import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class PhoneListenerService : WearableListenerService() {
-    private val scope = CoroutineScope(Dispatchers.IO)
+
+    @Inject
+    lateinit var batteryInfoRepo: BatteryInfoRepo
+
+    @Inject
+    lateinit var wearableDataSource: WearableDataSource
+
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
+
     override fun onCreate() {
         super.onCreate()
-        val dataStoreRepository = DataStoreRepositoryImpl(applicationContext)
-        val batteryInfoRepo = BatteryInfoRepoImp(
-            context = applicationContext,
-            dataStoreRepository = dataStoreRepository,
-            notificationHelper = NotificationHelper(applicationContext)
-        )
-        val batteryData = batteryInfoRepo.getPhoneBatteryData().convertToJsonString()
-        scope.launch {
-            getNodes(applicationContext).forEach { nodeId ->
-                Wearable.getMessageClient(applicationContext).sendMessage(
-                    nodeId,
-                    MESSAGE_PATH,
-                    batteryData.toByteArray()
-                ).apply {
-                    addOnSuccessListener {
-                        Log.d(TAG, "onSuccess: Data send success")
-                    }
-                    addOnFailureListener {
-                        Log.d(TAG, "onFail: Unable to send the data $it")
-                    }
-                }
+        sendBatteryData()
+    }
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        super.onMessageReceived(messageEvent)
+        if (messageEvent.path == MESSAGE_PATH) {
+            sendBatteryData()
+        }
+    }
+
+    private fun sendBatteryData() {
+        applicationScope.launch {
+            val batteryData = batteryInfoRepo.getPhoneBatteryData().convertToJsonString()
+            val success = wearableDataSource.broadcastMessage(MESSAGE_PATH, batteryData.toByteArray())
+            if (success) {
+                Log.d(TAG, "Battery data sent successfully to Wear OS")
+            } else {
+                Log.d(TAG, "Failed or no Wear OS nodes found to send battery data")
             }
         }
     }
@@ -46,8 +53,4 @@ class PhoneListenerService : WearableListenerService() {
         private const val TAG = "PhoneListenerService"
         private const val MESSAGE_PATH = "/deploy"
     }
-}
-
-private fun getNodes(context: Context): Collection<String> {
-    return Tasks.await(Wearable.getNodeClient(context).connectedNodes).map { it.id }
 }

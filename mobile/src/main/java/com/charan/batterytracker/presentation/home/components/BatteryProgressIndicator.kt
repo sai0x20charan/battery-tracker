@@ -12,21 +12,3 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun BatteryProgressIndicator(
-    modifier: Modifier = Modifier,
-    percentage: Float,
-    isLowPowerMode: Boolean
-) {
-    val animatedProgress = animateFloatAsState(targetValue = percentage, label = "progress")
-    LinearProgressIndicator(
-        progress = { animatedProgress.value },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                10.dp)
-            .size(10.dp),
-        color = if(isLowPowerMode) Color.Yellow else Color.Green,
-    )
-}

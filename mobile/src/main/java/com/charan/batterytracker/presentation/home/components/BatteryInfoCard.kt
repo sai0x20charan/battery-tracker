@@ -1,72 +1,40 @@
 package com.charan.batterytracker.presentation.home.components
 
-import android.util.Log
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.charan.batterytracker.data.model.BatteryInfo
+import com.charan.batterytracker.presentation.common.components.CustomListItem
+import com.charan.batterytracker.presentation.home.BatteryDetailItem
+import com.charan.batterytracker.theme.indexItemFor
 
 @Composable
-fun BatteryInfoCard(batteryState : BatteryInfo) {
-    ElevatedCard(
-
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(10.dp)
-    ) {
-        Column(Modifier.padding(top = 20.dp, start = 10.dp)) {
-            DetailsInfoRow(
-                title = "Remaining Capacity",
-                body = "${batteryState.remainingCapacity}mAh",
-
-                )
-            DetailsInfoRow(
-                title = "Battery Status",
-                body = batteryState.batteryStatus,
-
-                )
-            DetailsInfoRow(
-                title = "Battery Type",
-                body = batteryState.batteryType,
-
-                )
-            DetailsInfoRow(
-                title = "Health Info",
-                body = batteryState.batteryHealth,
-                modifier = Modifier
-            )
-            DetailsInfoRow(
-                title = "Temperature",
-                body = "${batteryState.batteryTemperature}°C",
-                modifier = Modifier
-            )
-            DetailsInfoRow(
-                title = "Voltage",
-                body = "${batteryState.voltage}V",
-                modifier = Modifier
-            )
-
-            if (batteryState.isCharging) {
-                if (batteryState.chargingType != "USB") {
-                    DetailsInfoRow(
-                        title = "Charge Time Remaining",
-                        body = "${batteryState.chargingRemainingTime} Minutes",
-                        modifier = Modifier
+fun BatteryDetailList(
+    details: List<BatteryDetailItem>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+        details.forEachIndexed { index, item ->
+            CustomListItem(
+                indexItem = details.indexItemFor(index),
+                headLineContent = {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                },
+                trailingContent = {
+                    Text(
+                        text = item.value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-
-                DetailsInfoRow(
-                    title = "Charging Type",
-                    body = batteryState.chargingType,
-                    modifier = Modifier
-                )
-
-            }
+            )
         }
     }
 }

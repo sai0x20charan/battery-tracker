@@ -1,29 +1,28 @@
 package com.charan.batterytracker.presentation.settings
 
-
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,12 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
 import com.charan.batterytracker.presentation.settings.components.SettingsItem
-
 import com.charan.batterytracker.presentation.settings.components.ChangePhoneNameBottomSheet
 import com.charan.batterytracker.presentation.settings.components.CheckForUpdateDialog
 import kotlinx.coroutines.flow.collectLatest
@@ -45,8 +44,10 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.shouldShowRationale
+import com.charan.batterytracker.presentation.common.toScreenContentPadding
 import com.charan.batterytracker.presentation.navigation.LicenseScreenNav
 import com.charan.batterytracker.presentation.settings.components.NotificationSettingsBottomSheet
+import com.charan.batterytracker.theme.IndexItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class,
     ExperimentalMaterial3ExpressiveApi::class
@@ -142,22 +143,40 @@ fun SettingsScreen(
         }
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = paddingValues.toScreenContentPadding()
         ) {
             item {
-                SettingsItem(title = "Change Phone Name") { showChangePhoneNameBottomSheet = true }
-                HorizontalDivider()
-                SettingsItem(title = "Notification Settings") { showNotificationSettingsBottomSheet = true }
-                HorizontalDivider()
-                SettingsItem(title = "Project On Github") { viewModel.onEvent(SettingsEvent.onGithubOpen) }
-//                HorizontalDivider()
-//                SettingsItem(title = "Check for update") { showCheckForUpdateDialog = true }
-                HorizontalDivider()
-                SettingsItem(title = "Licenses") { navHostController.navigate(LicenseScreenNav) }
-//                HorizontalDivider()
-//                DarkModeToggle(state.isDarkModeEnabled) { viewModel.onEvent(SettingsEvent.onChangeDarkMode) }
+                SettingsCategoryHeader(title = "General")
+                SettingsItem(
+                    title = "Change Phone Name",
+                    supportingText = state.phoneName.takeIf { it.isNotBlank() },
+                    indexItem = IndexItem.FIRST
+                ) {
+                    showChangePhoneNameBottomSheet = true
+                }
+                SettingsItem(
+                    title = "Notification Settings",
+                    indexItem = IndexItem.LAST
+                ) {
+                    showNotificationSettingsBottomSheet = true
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SettingsCategoryHeader(title = "About")
+                SettingsItem(
+                    title = "Project On Github",
+                    indexItem = IndexItem.FIRST
+                ) {
+                    viewModel.onEvent(SettingsEvent.onGithubOpen)
+                }
+                SettingsItem(
+                    title = "Licenses",
+                    indexItem = IndexItem.LAST
+                ) {
+                    navHostController.navigate(LicenseScreenNav)
+                }
             }
         }
 
@@ -195,16 +214,15 @@ fun SettingsScreen(
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+@Composable
+private fun SettingsCategoryHeader(
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(start = 12.dp, top = 12.dp, bottom = 8.dp)
+    )
+}

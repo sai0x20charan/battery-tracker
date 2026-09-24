@@ -3,7 +3,11 @@
     android:initialLayout="@layout/glance_default_loading_layout"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:minWidth="110dp"
+    android:minHeight="50dp"
     android:targetCellWidth="2"
     android:targetCellHeight="2"
+    android:maxResizeWidth="500dp"
+    android:maxResizeHeight="500dp"
     android:updatePeriodMillis="0"
     android:previewImage="@drawable/material3widgetpreview" />

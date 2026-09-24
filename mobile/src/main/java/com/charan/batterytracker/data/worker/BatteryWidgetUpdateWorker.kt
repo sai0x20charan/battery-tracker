@@ -2,7 +2,6 @@ package com.charan.batterytracker.data.worker
 
 import android.content.Context
 import android.util.Log
-import androidx.glance.appwidget.updateAll
 import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -15,21 +14,29 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.charan.batterytracker.data.repository.WidgetRepository
 import com.charan.batterytracker.utils.AppConstants
-import com.charan.batterytracker.widgets.Material3widget
 import java.util.concurrent.TimeUnit
 
 @HiltWorker
 class BatteryWidgetUpdateWorker @AssistedInject constructor(
     @ApplicationContext val context: Context,
     @Assisted workerParams: WorkerParameters,
+    private val widgetRepository: WidgetRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-            Material3widget.updateAll(context)
-            return Result.success()
+        return try {
+            widgetRepository.allDevicesBatteryData()
+            widgetRepository.updateWidget()
+            Result.success()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating battery widget in worker", e)
+            Result.retry()
+        }
     }
 
     companion object {
+        private const val TAG = "BatteryWidgetUpdateWorker"
+
         fun setup(context: Context) {
             val constraints = Constraints.Builder()
                 .build()
@@ -39,12 +46,11 @@ class BatteryWidgetUpdateWorker @AssistedInject constructor(
                 TimeUnit.MINUTES
             )
                 .setConstraints(constraints)
-
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 AppConstants.UPDATE_BATTERY,
-                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+                ExistingPeriodicWorkPolicy.KEEP,
                 request
             )
         }
