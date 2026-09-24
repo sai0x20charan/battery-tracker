@@ -133,7 +133,8 @@ class BatteryInfoRepoImp @Inject constructor(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun getBluetoothBattery(): BluetoothDeviceBatteryInfo {
-        return getHeadPhoneBatteryInfo()
+        getHeadPhoneBatteryInfo()
+        return _bluetoothBatteryState.value
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)

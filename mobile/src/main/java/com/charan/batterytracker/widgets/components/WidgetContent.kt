@@ -1,12 +1,13 @@
 package com.charan.batterytracker.widgets.components
 
-
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceComposable
 import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
 import androidx.glance.ImageProvider
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.fillMaxSize
@@ -18,58 +19,65 @@ import com.charan.batterytracker.data.model.BluetoothDeviceBatteryInfo
 @GlanceComposable
 @Composable
 fun WidgetContent(
-    phoneBatteryState : BatteryInfo,
-    bluetoothBatteryState : BluetoothDeviceBatteryInfo,
-    modifier : GlanceModifier = GlanceModifier,
-    isLargeWidget : Boolean
+    phoneBatteryState: BatteryInfo,
+    bluetoothBatteryState: BluetoothDeviceBatteryInfo,
+    modifier: GlanceModifier = GlanceModifier,
+    isSmall: Boolean,
+    isLarge: Boolean
 ) {
+    val hasWearOs = bluetoothBatteryState.isWearOsConnected && bluetoothBatteryState.wearosBatteryLevel.isNotBlank()
+    val hasHeadphones = bluetoothBatteryState.isHeadPhoneConnected && bluetoothBatteryState.headPhoneBatteryLevel.isNotBlank()
 
-        Column(
-            modifier = GlanceModifier
-                    .cornerRadius(12.dp)
-                .fillMaxSize()
-                .padding(start = 5.dp, end = 5.dp, bottom = 5.dp, top = 15.dp)
-                .then(modifier)
-            ,
-            horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-        ) {
-            DeviceBatteryView(
-                deviceName = phoneBatteryState.deviceName,
-                deviceBattery = phoneBatteryState.batteryLevel,
-                batteryPercentage = phoneBatteryState.batteryPercentage,
-                isCharging = phoneBatteryState.isCharging,
-                isLowPowerMode = phoneBatteryState.isLowPowerMode,
-                isLargeWidget = isLargeWidget,
-                deviceIcon = ImageProvider(R.drawable.mobile),
-                modifier = GlanceModifier.padding(bottom = 20.dp)
-            )
-
-            if (bluetoothBatteryState.isWearOsConnected) {
-                DeviceBatteryView(
-                    deviceName = if(bluetoothBatteryState.wearOsDeviceName.isNullOrEmpty().not()) bluetoothBatteryState.wearOsDeviceName else "Wear os",
-                    deviceBattery = bluetoothBatteryState.wearosBatteryLevel,
-                    isCharging = bluetoothBatteryState.isWearOsCharging,
-                    batteryPercentage = bluetoothBatteryState.wearOsBatteryPercentage,
-                    isLowPowerMode = false,
-                    isLargeWidget = isLargeWidget,
-                    deviceIcon = ImageProvider(R.drawable.watch),
-                    modifier = GlanceModifier.padding(bottom = 20.dp)
-                )
-
+    Column(
+        modifier = modifier.fillMaxSize().background(GlanceTheme.colors.surface).cornerRadius(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.Vertical.CenterVertically
+    ) {
+        DeviceBatteryView(
+            deviceName = phoneBatteryState.deviceName.ifBlank { "Phone" },
+            deviceBattery = phoneBatteryState.batteryLevel,
+            batteryPercentage = phoneBatteryState.batteryPercentage,
+            isCharging = phoneBatteryState.isCharging,
+            isLowPowerMode = phoneBatteryState.isLowPowerMode,
+            showDeviceName = isLarge,
+            deviceIcon = ImageProvider(R.drawable.mobile),
+            modifier = if (!isSmall && (hasWearOs || hasHeadphones)) {
+                GlanceModifier.padding(bottom = if (isLarge) 8.dp else 4.dp)
+            } else {
+                GlanceModifier
             }
-            if (bluetoothBatteryState.isHeadPhoneConnected) {
+        )
+
+        if (!isSmall) {
+            if (hasWearOs) {
                 DeviceBatteryView(
-                    deviceName = bluetoothBatteryState.headPhoneName,
+                    deviceName = bluetoothBatteryState.wearOsDeviceName.takeIf { it.isNotBlank() } ?: "Wear OS",
+                    deviceBattery = bluetoothBatteryState.wearosBatteryLevel,
+                    batteryPercentage = bluetoothBatteryState.wearOsBatteryPercentage,
+                    isCharging = bluetoothBatteryState.isWearOsCharging,
+                    isLowPowerMode = false,
+                    showDeviceName = isLarge,
+                    deviceIcon = ImageProvider(R.drawable.watch),
+                    modifier = if (hasHeadphones) {
+                        GlanceModifier.padding(bottom = if (isLarge) 8.dp else 4.dp)
+                    } else {
+                        GlanceModifier
+                    }
+                )
+            }
+
+            if (hasHeadphones) {
+                DeviceBatteryView(
+                    deviceName = bluetoothBatteryState.headPhoneName.takeIf { it.isNotBlank() } ?: "Headphones",
                     deviceBattery = bluetoothBatteryState.headPhoneBatteryLevel,
                     batteryPercentage = bluetoothBatteryState.headPhoneBatteryPercentage,
                     isCharging = false,
-                    isLargeWidget = isLargeWidget,
                     isLowPowerMode = false,
+                    showDeviceName = isLarge,
                     deviceIcon = ImageProvider(R.drawable.headphones),
                     modifier = GlanceModifier
                 )
             }
-
         }
     }
-
+}

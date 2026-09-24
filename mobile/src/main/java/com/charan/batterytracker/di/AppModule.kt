@@ -92,13 +92,15 @@ class AppModule {
         @ApplicationContext context: Context,
         batteryInfoRepo: BatteryInfoRepo,
         dataStoreRepository: DataStoreRepository,
-        settingsUtils: SettingsUtils
+        settingsUtils: SettingsUtils,
+        @ApplicationScope applicationScope: CoroutineScope
     ): WidgetRepository {
         return WidgetRepository(
             context = context,
             batteryInfoRepo = batteryInfoRepo,
             dataStoreRepository = dataStoreRepository,
-            settingsUtils = settingsUtils
+            settingsUtils = settingsUtils,
+            applicationScope = applicationScope
         )
     }
 

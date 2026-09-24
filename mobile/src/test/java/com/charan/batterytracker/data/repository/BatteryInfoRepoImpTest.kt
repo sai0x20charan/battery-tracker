@@ -122,6 +122,24 @@ class BatteryInfoRepoImpTest {
         assertEquals("15", fakeNotificationHelper.lastWearOsAlert?.first)
     }
 
+    @Test
+    fun getBluetoothBattery_returnsCombinedState() = runBlocking {
+        fakeBluetoothDataSource.targetWearOsDeviceName = "Pixel Watch 3"
+        fakeWearableDataSource.wearOsFlow.emit(
+            BatteryInfo(
+                deviceName = "Watch",
+                batteryLevel = "80",
+                batteryPercentage = 0.8f,
+                isCharging = false
+            )
+        )
+
+        val bluetoothInfo = repo.getBluetoothBattery()
+        assertEquals("Pixel Watch 3", bluetoothInfo.wearOsDeviceName)
+        assertEquals("80", bluetoothInfo.wearosBatteryLevel)
+        assertTrue(bluetoothInfo.isWearOsConnected)
+    }
+
     // Fakes
     class FakeNotificationHelper : NotificationHelper(null) {
         var lastHeadphonesAlert: Pair<String, String>? = null

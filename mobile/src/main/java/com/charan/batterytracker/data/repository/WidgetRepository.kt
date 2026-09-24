@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import com.charan.batterytracker.data.model.BatteryInfo
 import com.charan.batterytracker.data.model.BluetoothDeviceBatteryInfo
+import com.charan.batterytracker.di.ApplicationScope
 import com.charan.batterytracker.utils.SettingsUtils
 import com.charan.batterytracker.widgets.Material3widget
 import com.charan.batterytracker.widgets.WidgetState
@@ -12,8 +13,14 @@ import dagger.hilt.EntryPoints
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,6 +30,7 @@ class WidgetRepository @Inject constructor(
     val dataStoreRepository: DataStoreRepository,
     val settingsUtils: SettingsUtils,
     @ApplicationContext val context: Context,
+    @ApplicationScope private val applicationScope: CoroutineScope,
 ) {
     @EntryPoint
     @InstallIn(SingletonComponent::class)
@@ -45,7 +53,19 @@ class WidgetRepository @Inject constructor(
     }
 
     fun startObserving() {
-        // Lifecycle and receivers are managed reactively by BatteryInfoRepo data sources
+        applicationScope.launch {
+            combine(
+                batteryInfoRepo.getBatteryDetails(),
+                batteryInfoRepo.getBluetoothBatteryDetails()
+            ) { phoneInfo, bluetoothInfo ->
+                phoneInfo to bluetoothInfo
+            }
+                .distinctUntilChanged()
+                .conflate()
+                .collectLatest {
+                    updateWidget()
+                }
+        }
     }
 
     fun batteryData(): BatteryInfo =
@@ -58,18 +78,25 @@ class WidgetRepository @Inject constructor(
         if (settingsUtils.isBluetoothPermissionGranted()) {
             batteryInfoRepo.sendSignalToWearOs()
         }
+        val phoneBattery = batteryInfoRepo.getPhoneBatteryData()
+        val bluetoothBattery = if (settingsUtils.isBluetoothPermissionGranted()) {
+            batteryInfoRepo.getBluetoothBattery()
+        } else {
+            batteryInfoRepo.getBluetoothBatteryDetails().first() ?: BluetoothDeviceBatteryInfo()
+        }
         return WidgetState(
-            deviceBattery = batteryInfoRepo.getPhoneBatteryData(),
-            bluetoothBattery = batteryInfoRepo.getBluetoothBatteryDetails().first()
-                ?: BluetoothDeviceBatteryInfo()
+            deviceBattery = phoneBattery,
+            bluetoothBattery = bluetoothBattery
         )
     }
 
     fun cleanUp() {
-        // Automatically cleaned up on flow cancellation
+        // Automatically cleaned up on scope cancellation
     }
 
     suspend fun updateWidget() {
-        Material3widget.updateAll(context)
+        runCatching {
+            Material3widget.updateAll(context)
+        }
     }
 }
